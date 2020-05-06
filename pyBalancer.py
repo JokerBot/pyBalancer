@@ -1,11 +1,13 @@
 import json 
 import socket
 import threading
+import requests
+import sched,time
 
-
+scheduler = sched.scheduler(time.time, time.sleep)
 lock=threading.RLock()
-connection={}
-
+WORKERS=[]
+pointer=0
 
 class UpstreamConnectionThread(threading.Thread):
     
@@ -193,6 +195,7 @@ def openServerConnection(server_ip,server_port):
 
         try:
             sock2.connect((server_ip,server_port))
+            print(server_ip,server_port)
             sock2.setblocking(1)
 
         except socket.error:
@@ -205,14 +208,27 @@ def openServerConnection(server_ip,server_port):
     
 
 
-def getServerConnection(server_ip,server_port):
-
+def getServerConnection():
     "the sever choosing logic"
+    global pointer
+
+    #get next avaliable server
+    while True:
+        pointer=(pointer)%len(WORKERS)
+        with lock:
+            if WORKERS[pointer]['is_alive']==True:
+                break
+            pointer+=1
+
+    server_ip=WORKERS[pointer]['ip_address']
+    server_port=WORKERS[pointer]['port']
+    pointer+=1
+    
     return openServerConnection(server_ip,server_port)
 
         
 
-def listenOnPort(port,server_ip,server_port):
+def listenOnPort(port):
     global connection
 
     sock=socket.socket()
@@ -227,8 +243,7 @@ def listenOnPort(port,server_ip,server_port):
     while True:
         sock.setblocking(1)
         client_sock, clientAddress = sock.accept()
-        server_sock,is_connected=getServerConnection(server_ip,server_port)
-        print(server_ip,server_port)
+        server_sock,is_connected=getServerConnection()
         if is_connected==False:
             try:
                 client_sock.close()
@@ -261,11 +276,39 @@ def getConfiguration():
         return conf
 
 
+# class HealthCheckThread(threading.Thread):
+
+#     def __init__(self):
+#         threading.Thread.__init__(self)
+
+#     def run(self):
+#         while True:
+#             print('health cehck ----------------------')
+#             with lock:
+#                 for worker in WORKERS:
+                    
+#                     try:
+#                         response = requests.get('http://'+worker['ip_address']+":"+str(worker['health_check_port']+worker['health_check_path']))
+#                     except Exception as err:
+#                         worker['is_alive']=False
+#                     else:
+#                         if response.status_code==worker['health_check_status_code']:
+#                             worker['is_alive']=True
+#                         else:
+#                             worker['is_alive']=False
+#             time.sleep(5)
+
+
 
 if __name__=='__main__':
-    
     print("starting BalanceTheLoad....")
 
     conf=getConfiguration()
-    listenOnPort(conf['listen_on'],conf['workers'][0]['ip_address'],conf['workers'][0]['port'])
+    WORKERS=conf['workers']
+    for worker in WORKERS:
+        worker['is_alive']=True
+    # healthcheck_thread=HealthCheckThread()
+    # healthcheck_thread.start()
+    # time.sleep(3)
+    listenOnPort(conf['listen_on'])
 
