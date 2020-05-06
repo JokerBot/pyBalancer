@@ -1,21 +1,20 @@
 {
     "listen_on":5000,
+    "health_check_interval":20,
     "workers":[
         {
             "ip_address":"localhost",
             "port":3000,
             "health_check_port":3000,
             "health_check_path":"/",
-            "health_check_status_code":200,
-            "interval":20
+            "health_check_status_code":200
         },
         {
             "ip_address":"localhost",
             "port":3001,
             "health_check_port":3001,
             "health_check_path":"/",
-            "health_check_status_code":200,
-            "interval":20
+            "health_check_status_code":200
         }
 
     ]
