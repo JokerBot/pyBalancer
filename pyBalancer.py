@@ -214,9 +214,8 @@ def getServerConnection(client_ip):
     global pointer,hash_table
 
 
-    #check if already got the ip
     with lock:
-        if client_ip in hash_table and WORKERS[hash_table[client_ip]]['is_alive']==True:
+        if client_ip in hash_table and WORKERS[hash_table[client_ip]]['is_alive']==True:     #check if already got the ip
             server_ip=WORKERS[hash_table[client_ip]]['ip_address']
             server_port=WORKERS[hash_table[client_ip]]['port']
             return openServerConnection(server_ip,server_port)
