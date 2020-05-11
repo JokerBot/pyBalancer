@@ -1,6 +1,6 @@
 {
     "listen_on":5000,
-    "health_check_interval":20,
+    "health_check_interval":5,
     "workers":[
         {
             "ip_address":"localhost",

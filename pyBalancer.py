@@ -287,37 +287,45 @@ def getConfiguration():
 
 class HealthCheckThread(threading.Thread):
 
-    def __init__(self):
+    def __init__(self,worker_id,interval):
         threading.Thread.__init__(self)
+        self.worker_id=worker_id
+        self.interval=interval
 
     def run(self):
         while True:
-            print('health cehck ----------------------')
             with lock:
-                for worker in WORKERS:
-                    
-                    try:
-                        response = requests.get('http://'+worker['ip_address']+":"+str(worker['health_check_port'])+worker['health_check_path'])
-                    except Exception as err:
-                        worker['is_alive']=False
+                print('-----------health check server '+WORKERS[self.worker_id]["ip_address"]+':'+str(WORKERS[self.worker_id]["port"])+'----------------------')
+                
+                try:
+                    response = requests.get('http://'+WORKERS[self.worker_id]['ip_address']+":"+str(WORKERS[self.worker_id]['health_check_port'])+WORKERS[self.worker_id]['health_check_path'])
+                except Exception as err:
+                    WORKERS[self.worker_id]['is_alive']=False
+                    print('died')
+                else:
+                    if response.status_code==WORKERS[self.worker_id]['health_check_status_code']:
+                        WORKERS[self.worker_id]['is_alive']=True
+                        print('alive')
                     else:
-                        if response.status_code==worker['health_check_status_code']:
-                            worker['is_alive']=True
-                        else:
-                            worker['is_alive']=False
-            time.sleep(5)
+                        WORKERS[self.worker_id]['is_alive']=False
+                        print('died')
+
+            time.sleep(self.interval)
 
 
 
 if __name__=='__main__':
+
     print("starting BalanceTheLoad....")
+    # global WORKERS
 
     conf=getConfiguration()
     WORKERS=conf['workers']
-    for worker in WORKERS:
-        worker['is_alive']=False
-    healthcheck_thread=HealthCheckThread()
-    healthcheck_thread.start()
+    for i in range(0,len(WORKERS)):
+        WORKERS[i]['is_alive']=False
+        healthcheck_thread=HealthCheckThread(i,conf['health_check_interval'])
+        healthcheck_thread.start()
+        
     time.sleep(3)
     listenOnPort(conf['listen_on'])
 
